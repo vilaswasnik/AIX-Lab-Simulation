@@ -831,6 +831,18 @@ function lsattr() {
                 echo "tcp_recvspace   65536               TCP Receive Buffer Size      True"
                 echo "tcp_sendspace   65536               TCP Send Buffer Size         True"
                 ;;
+            "sys0")
+                echo "conslogin       enable              Console Login                True"
+                echo "fwversion       IBM,FW920.30 (SV920_138) Firmware version and revision levels False"
+                echo "ioplanar        2                   I/O Planar                   False"
+                echo "keylock         normal              State of system keylock      False"
+                echo "maxbuf          20                  Maximum number of pages in block I/O buffer cache True"
+                echo "maxperm         80                  Maximum percentage of real memory allowed for non-computational pages True"
+                echo "maxpin          80                  Maximum percentage of real memory allowed to be pinned True"
+                echo "minperm         3                   Minimum percentage of real memory used for non-computational pages True"
+                echo "modelname       IBM,9009-42A        Machine name                 False"
+                echo "systemid        IBM,0206ABC1         Hardware system identifier   False"
+                ;;
             *)
                 echo "lsattr: 0514-516 Cannot find device $2."
                 ;;
@@ -1669,33 +1681,35 @@ function iostat() {
             local i=0
             while [ $i -lt $count ]; do
                 echo "tty:      tin         tout   avg-cpu:  % user   % sys    % idle    % iowait"
-                printf "          %.1f          %.1f              %.1f     %.1f      %.1f      %.1f\n" \
-                    $(echo "scale=1; $RANDOM/32767*2" | bc -l) \
-                    $(echo "scale=1; $RANDOM/32767*20" | bc -l) \
-                    $(echo "scale=1; 15 + $RANDOM/32767*15" | bc -l) \
-                    $(echo "scale=1; 8 + $RANDOM/32767*10" | bc -l) \
-                    $(echo "scale=1; 60 + $RANDOM/32767*20" | bc -l) \
-                    $(echo "scale=1; 10 + $RANDOM/32767*15" | bc -l) 2>/dev/null || {
-                        printf "          0.0          8.2              15.2     8.5      64.0      12.3\n"
-                    }
+                # Generate random values without bc dependency
+                local tin=$(awk 'BEGIN{srand(); printf "%.1f", rand()*2}')
+                local tout=$(awk 'BEGIN{srand(); printf "%.1f", rand()*20}')
+                local user=$(awk 'BEGIN{srand(); printf "%.1f", 15+rand()*15}')
+                local sys=$(awk 'BEGIN{srand(); printf "%.1f", 8+rand()*10}')
+                local idle=$(awk 'BEGIN{srand(); printf "%.1f", 60+rand()*20}')
+                local iowait=$(awk 'BEGIN{srand(); printf "%.1f", 10+rand()*15}')
+                
+                printf "          %s          %s              %s     %s      %s      %s\n" \
+                    "$tin" "$tout" "$user" "$sys" "$idle" "$iowait"
                 echo ""
                 echo "Disks:        % tm_act     Kbps      tps    Kb_read   Kb_wrtn"
-                printf "hdisk0          %.1f      %.1f       %d      %d     %d\n" \
-                    $(echo "scale=1; 10 + $RANDOM/32767*15" | bc -l) \
-                    $(echo "scale=1; 200 + $RANDOM/32767*100" | bc -l) \
-                    $((40 + RANDOM % 20)) \
-                    $((12000 + RANDOM % 2000)) \
-                    $((44000 + RANDOM % 3000)) 2>/dev/null || {
-                        echo "hdisk0          12.5      234.2       45      12567     45123"
-                    }
-                printf "hdisk1           %.1f      %.1f       %d       %d     %d\n" \
-                    $(echo "scale=1; 6 + $RANDOM/32767*8" | bc -l) \
-                    $(echo "scale=1; 120 + $RANDOM/32767*80" | bc -l) \
-                    $((20 + RANDOM % 15)) \
-                    $((8000 + RANDOM % 1500)) \
-                    $((22000 + RANDOM % 2000)) 2>/dev/null || {
-                        echo "hdisk1           8.2      156.7       23       8934     23456"
-                    }
+                
+                local hdisk0_act=$(awk 'BEGIN{srand(); printf "%.1f", 10+rand()*15}')
+                local hdisk0_kbps=$(awk 'BEGIN{srand(); printf "%.1f", 200+rand()*100}')
+                local hdisk0_tps=$((40 + RANDOM % 20))
+                local hdisk0_read=$((12000 + RANDOM % 2000))
+                local hdisk0_wrtn=$((44000 + RANDOM % 3000))
+                
+                local hdisk1_act=$(awk 'BEGIN{srand(); printf "%.1f", 6+rand()*8}')
+                local hdisk1_kbps=$(awk 'BEGIN{srand(); printf "%.1f", 120+rand()*80}')
+                local hdisk1_tps=$((20 + RANDOM % 15))
+                local hdisk1_read=$((8000 + RANDOM % 1500))
+                local hdisk1_wrtn=$((22000 + RANDOM % 2000))
+                
+                printf "hdisk0          %s      %s       %d      %d     %d\n" \
+                    "$hdisk0_act" "$hdisk0_kbps" "$hdisk0_tps" "$hdisk0_read" "$hdisk0_wrtn"
+                printf "hdisk1           %s      %s       %d       %d     %d\n" \
+                    "$hdisk1_act" "$hdisk1_kbps" "$hdisk1_tps" "$hdisk1_read" "$hdisk1_wrtn"
                 echo "cd0              0.0        0.0        0          0         0"
                 echo ""
                 i=$((i+1))
@@ -1798,6 +1812,412 @@ function sar() {
 }
 
 # Print comprehensive welcome message
+# =============================================================================
+# MEMORY AND PAGING COMMANDS
+# =============================================================================
+
+function svmon() {
+    case "$1" in
+        "-G")
+            echo "                   size       inuse        free         pin     virtual"
+            echo "memory           2097152     1638400      458752      819200     1843200"
+            echo "pg space         1048576      209715      838861"
+            echo ""
+            echo "                   work        pers        clnt       other"
+            echo "pin               409600      204800      102400      102400"
+            echo "in use           1024000      614400           0           0"
+            echo ""
+            echo "PageSize   PoolSize       inuse        pgsp         pin"
+            echo "s    4 KB   2097152     1638400      209715      819200"
+            echo "m   64 KB         0           0           0           0"
+            ;;
+        "-P")
+            shift
+            case "$1" in
+                "-t")
+                    local count=${2:-10}
+                    echo "    Pid Command          Inuse      Pin     Pgsp  Virtual 64-bit Mthrd 16MB"
+                    echo " 315392 java           1048576   102400   524288  1572864      Y     Y    N"
+                    echo " 262144 oracle         524288    51200   262144   786432      Y     Y    N"
+                    echo "  98304 db2sysc        262144    25600   131072   393216      Y     Y    N"
+                    echo "  65536 httpd          131072    12800    65536   196608      Y     N    N"
+                    echo "  32768 sshd            65536     6400    32768    98304      Y     N    N"
+                    echo "  16384 cron            32768     3200    16384    49152      N     N    N"
+                    echo "   8192 syslogd         16384     1600     8192    24576      N     N    N"
+                    echo "   4096 init             8192      800     4096    12288      N     N    N"
+                    echo "   2048 syncd            4096      400     2048     6144      N     N    N"
+                    echo "   1024 kproc            2048      200     1024     3072      N     N    N"
+                    ;;
+                *)
+                    echo "               Pid Command          Inuse      Pin     Pgsp  Virtual 64-bit Mthrd 16MB"
+                    echo "            315392 java           1048576   102400   524288  1572864      Y     Y    N"
+                    echo "            262144 oracle         524288    51200   262144   786432      Y     Y    N"
+                    ;;
+            esac
+            ;;
+        *)
+            echo "Usage: svmon { -G | -P [-t number] }"
+            ;;
+    esac
+}
+
+function lsps() {
+    case "$1" in
+        "-a")
+            echo "Page Space      Physical Volume   Volume Group    Size %Used Active  Auto  Type Chksum"
+            echo "paging00        hdisk0            rootvg        512MB    45   yes     yes    lv     no"
+            echo "paging01        hdisk1            rootvg        512MB    23   yes     yes    lv     no"
+            ;;
+        "-s")
+            echo "Total Paging Space   Percent Used"
+            echo "      1024MB              34%"
+            ;;
+        *)
+            echo "Page Space      Physical Volume   Volume Group    Size %Used Active  Auto  Type Chksum"
+            echo "paging00        hdisk0            rootvg        512MB    45   yes     yes    lv     no"
+            echo "paging01        hdisk1            rootvg        512MB    23   yes     yes    lv     no"
+            ;;
+    esac
+}
+
+# =============================================================================
+# FILE SYSTEM MANAGEMENT COMMANDS
+# =============================================================================
+
+function fsck() {
+    if [ -z "$1" ]; then
+        echo "Usage: fsck device"
+        return 1
+    fi
+    
+    case "$1" in
+        "/dev/hd"*|"/dev/lv"*)
+            echo "** Checking $1"
+            echo "** Phase 1 - Check Blocks and Sizes"
+            echo "** Phase 2 - Check Pathnames"
+            echo "** Phase 3 - Check Connectivity"
+            echo "** Phase 4 - Check Reference Counts" 
+            echo "** Phase 5 - Check Cylinder Groups"
+            echo ""
+            echo "filesys: FILESYSTEM IS CLEAN"
+            ;;
+        *)
+            echo "fsck: 0506-004 Cannot open $1: The file does not exist."
+            return 1
+            ;;
+    esac
+}
+
+function mount() {
+    if [ $# -eq 0 ]; then
+        # Show mounted filesystems like lsfs
+        lsfs
+        return
+    fi
+    
+    case "$1" in
+        "-o")
+            local options="$2"
+            local device="$3"
+            local mountpoint="$4"
+            echo "mount: mounting $device on $mountpoint with options $options"
+            ;;
+        "/dev/"*)
+            local device="$1"
+            local mountpoint="$2"
+            echo "mount: mounting $device on $mountpoint"
+            ;;
+        *)
+            echo "Usage: mount [-o options] device mountpoint"
+            return 1
+            ;;
+    esac
+}
+
+function mkfs() {
+    case "$1" in
+        "-V")
+            local fstype="$2"
+            local device="$3"
+            if [ "$fstype" = "jfs2" ]; then
+                echo "mkfs: Creating $fstype filesystem on $device"
+                echo "Device $device:"
+                echo "    Standard empty filesystem"
+                echo "    4096 byte inodes, 4096 byte blocks"
+                echo "    Filesystem size is 262144 (4096 byte) blocks"
+                echo "    Superblock backups stored on blocks:"
+                echo "        8193, 24577, 40961, 57345, 73729"
+                echo ""
+                echo "mkfs completed successfully."
+            else
+                echo "mkfs: Unknown filesystem type $fstype"
+                return 1
+            fi
+            ;;
+        *)
+            echo "Usage: mkfs -V fstype device"
+            ;;
+    esac
+}
+
+function chfs() {
+    case "$1" in
+        "-a")
+            local attr="$2"
+            local mountpoint="$3"
+            if [[ "$attr" == size=* ]]; then
+                local size_change="${attr#size=}"
+                echo "chfs: changing size of $mountpoint by $size_change"
+                echo "Filesystem size changed successfully"
+            else
+                echo "chfs: changing attribute $attr for $mountpoint"
+            fi
+            ;;
+        *)
+            echo "Usage: chfs -a attribute=value filesystem"
+            ;;
+    esac
+}
+
+function crfs() {
+    local vg_name=""
+    local mount_point=""
+    local size=""
+    local fstype="jfs2"
+    
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            "-v") fstype="$2"; shift 2 ;;
+            "-g") vg_name="$2"; shift 2 ;;
+            "-m") mount_point="$2"; shift 2 ;;
+            "-a") 
+                if [[ "$2" == size=* ]]; then
+                    size="${2#size=}"
+                fi
+                shift 2 
+                ;;
+            *) shift ;;
+        esac
+    done
+    
+    echo "crfs: Creating $fstype filesystem"
+    echo "    Volume Group: $vg_name"
+    echo "    Mount Point: $mount_point" 
+    echo "    Size: $size"
+    echo "New File System size is 524288"
+    echo "New file system created successfully."
+}
+
+# =============================================================================
+# USER MANAGEMENT COMMANDS  
+# =============================================================================
+
+function lsuser() {
+    case "$1" in
+        "ALL"|"-a")
+            echo "root id=0 pgrp=system groups=system,bin,sys,security,cron,audit,lp,mail home=/root shell=/usr/bin/ksh gecos=0000-Admin(0000) loginretries=0 pwdwarntime=0 account_locked=false minage=0 maxage=0 maxexpired=-1 minalpha=0 minother=0 mindiff=0 maxrepeats=8 minlen=0 histexpire=0 histsize=0 pwdchecks= dictionlist= fsize=2097151 cpu=-1 data=262144 stack=65536 core=2097151 rss=65536 nofiles=2000 fsize_hard=2097151 cpu_hard=-1 data_hard=262144 stack_hard=65536 core_hard=2097151 rss_hard=65536 nofiles_hard=2000 roles= auth1=SYSTEM auth2=NONE umask=022 expires=0 SYSTEM=compat or=REMOTE login=true su=true daemon=true admin=true sugroups=ALL admgroups= tpath=nosak ttys=ALL"
+            echo ""
+            echo "daemon id=1 pgrp=staff groups=staff home=/tmp shell=/usr/bin/false gecos=0000-uucp(0000) loginretries=0 pwdwarntime=0 account_locked=false"
+            echo ""
+            echo "bin id=2 pgrp=bin groups=bin home=/bin shell=/usr/bin/false gecos=0000-uucp(0000) loginretries=0 pwdwarntime=0 account_locked=false"
+            ;;
+        "-f")
+            local username="$2"
+            case "$username" in
+                "root")
+                    echo "root:"
+                    echo "        id = 0"
+                    echo "        pgrp = system"
+                    echo "        groups = system,bin,sys,security,cron,audit,lp,mail"
+                    echo "        shell = /usr/bin/ksh"
+                    echo "        home = /root"
+                    echo "        gecos = 0000-Admin(0000)"
+                    echo "        loginretries = 0"
+                    echo "        account_locked = false"
+                    ;;
+                *)
+                    echo "lsuser: 3004-692 Cannot find the specified user $username."
+                    return 1
+                    ;;
+            esac
+            ;;
+        *)
+            echo "root daemon bin sys adm uucp guest nobody lpd oracle db2inst1"
+            ;;
+    esac
+}
+
+function mkuser() {
+    local username="$1"
+    if [ -z "$username" ]; then
+        echo "Usage: mkuser username"
+        return 1
+    fi
+    
+    echo "Creating user account: $username"
+    echo "3004-698 User ID Number $((1000 + RANDOM % 9000)) has been assigned to user $username."
+    echo "3004-701 A group name $username has been assigned to user $username."
+    echo "3004-704 A home directory /home/$username has been assigned to user $username."
+    echo ""
+    echo "User $username was created successfully."
+}
+
+function rmuser() {
+    local username="$1"
+    case "$1" in
+        "-p")
+            username="$2"
+            echo "Removing user $username and all associated files..."
+            echo "3004-697 User $username was deleted successfully."
+            ;;
+        *)
+            if [ -z "$username" ]; then
+                echo "Usage: rmuser [-p] username"
+                return 1
+            fi
+            echo "Removing user $username..."
+            echo "3004-697 User $username was deleted successfully."
+            ;;
+    esac
+}
+
+function chuser() {
+    if [ $# -lt 2 ]; then
+        echo "Usage: chuser attribute=value username"
+        return 1
+    fi
+    
+    local attr="$1"
+    local username="$2"
+    echo "Changing user attributes for $username: $attr"
+    echo "3004-700 User $username was changed."
+}
+
+# =============================================================================
+# PACKAGE MANAGEMENT COMMANDS
+# =============================================================================
+
+function lslpp() {
+    case "$1" in
+        "-L"|"-l")
+            echo "  Fileset                      Level  State  Description"
+            echo "  ----------------------------------------------------------------------------"
+            echo "  bos.net.tcp.client         7.3.0.0    C  TCP/IP Client Support"
+            echo "  bos.net.tcp.server         7.3.0.0    C  TCP/IP Server"
+            echo "  bos.perf.tools             7.3.0.0    C  Base Performance Tools"
+            echo "  bos.rte.libc               7.3.0.0    C  libc Library"
+            echo "  bos.rte.libcfg             7.3.0.0    C  libcfg Library" 
+            echo "  bos.adt.base               7.3.0.0    C  Base Application Development Toolkit"
+            echo "  bos.adt.syscalls           7.3.0.0    C  System Calls Application Development Toolkit"
+            echo "  xlC.rte                    16.1.0.1   C  IBM XL C/C++ Runtime for AIX"
+            echo "  Java8_64.sdk               8.0.7.15   C  Java SDK 64-bit"
+            echo "  openssh.base.client        8.1.102.0  C  Open Secure Shell Commands"
+            ;;
+        "-a")
+            echo "  Fileset                      Level  State  Description"
+            echo "  ----------------------------------------------------------------------------"
+            echo "  bos.net.tcp.client         7.3.0.0    C  TCP/IP Client Support"
+            echo "  bos.net.tcp.server         7.3.0.0    C  TCP/IP Server"
+            echo "  bos.perf.tools             7.3.0.0    C  Base Performance Tools"
+            ;;
+        *)
+            echo "Usage: lslpp { -L | -l | -a }"
+            ;;
+    esac
+}
+
+function installp() {
+    case "$1" in
+        "-a")
+            shift
+            local package="$1"
+            if [ -z "$package" ]; then
+                echo "Usage: installp -a package"
+                return 1
+            fi
+            echo "Preparing to install $package..."
+            echo ""
+            echo "+-----------------------------------------------------------------------------+"
+            echo "                    Pre-installation Verification..."
+            echo "+-----------------------------------------------------------------------------+"
+            echo "Verifying package $package"
+            echo "Checking requisites..."
+            echo "Installing $package..."
+            echo ""
+            echo "+-----------------------------------------------------------------------------+"
+            echo "                         Installation Summary"
+            echo "+-----------------------------------------------------------------------------+"
+            echo "Name                        Level           Part        Event       Result"
+            echo "-------------------------------------------------------------------------------"
+            echo "$package                    1.0.0.0         USR         APPLY       SUCCESS"
+            echo "$package                    1.0.0.0         ROOT        APPLY       SUCCESS"
+            echo ""
+            echo "Installation completed successfully."
+            ;;
+        "-u")
+            echo "Updating all installed packages..."
+            echo "No packages need updating."
+            ;;
+        *)
+            echo "Usage: installp { -a package | -u }"
+            ;;
+    esac
+}
+
+# =============================================================================
+# ADDITIONAL SYSTEM COMMANDS
+# =============================================================================
+
+function mkps() {
+    case "$1" in
+        "-s")
+            local size="$2"
+            local device="$3"
+            if [ -z "$size" ] || [ -z "$device" ]; then
+                echo "Usage: mkps -s size device"
+                return 1
+            fi
+            echo "Creating paging space on $device with size $size"
+            echo "New paging space created: paging$(printf "%02d" $((RANDOM % 10)))"
+            ;;
+        *)
+            echo "Usage: mkps -s size device"
+            ;;
+    esac
+}
+
+function swapon() {
+    local device="$1"
+    if [ -z "$device" ]; then
+        echo "Usage: swapon device"
+        return 1
+    fi
+    echo "swapon: activating paging space $device"
+}
+
+function swapoff() {
+    local device="$1"
+    if [ -z "$device" ]; then
+        echo "Usage: swapoff device"
+        return 1
+    fi
+    echo "swapoff: deactivating paging space $device"
+}
+
+function traceroute() {
+    local host="$1"
+    if [ -z "$host" ]; then
+        echo "Usage: traceroute host"
+        return 1
+    fi
+    
+    echo "traceroute to $host (192.168.1.100), 30 hops max, 40 byte packets"
+    echo " 1  192.168.109.2 (192.168.109.2)  1.234 ms  1.123 ms  1.089 ms"
+    echo " 2  10.0.0.1 (10.0.0.1)  12.345 ms  12.234 ms  12.123 ms"
+    echo " 3  172.16.1.1 (172.16.1.1)  25.456 ms  25.345 ms  25.234 ms"
+    echo " 4  $host (192.168.1.100)  45.678 ms  45.567 ms  45.456 ms"
+}
+
 echo "=========================================================="
 echo "=== COMPREHENSIVE AIX COMMAND SIMULATION ENVIRONMENT ==="
 echo "=========================================================="
@@ -1808,6 +2228,16 @@ echo "  oslevel, uname, prtconf, bootinfo, getconf"
 echo ""
 echo "💾 STORAGE MANAGEMENT:"
 echo "  lspv, lsvg, lslv, lsfs, df (with all flags: -k,-m,-g,-i,-t)"
+echo "  fsck, mount, mkfs, chfs, crfs (file system operations)"
+echo ""
+echo "💿 MEMORY & PAGING:"
+echo "  svmon, lsps, mkps, swapon, swapoff"
+echo ""
+echo "👥 USER MANAGEMENT:"
+echo "  lsuser, mkuser, rmuser, chuser"
+echo ""
+echo "📦 PACKAGE MANAGEMENT:"
+echo "  lslpp, installp"
 echo ""
 echo "🖥️  DEVICE & HARDWARE:"
 echo "  lscfg, lsdev, lsattr (with detailed flags)"
@@ -1832,6 +2262,10 @@ echo "  errpt -a             # All error entries"
 echo "  topas -i 5           # Performance monitor every 5 sec"
 echo "  netstat -rn          # Routing table"
 echo "  ps -ef               # All processes"
+echo "  svmon -G             # Memory usage summary"
+echo "  lsps -a              # List paging spaces"
+echo "  lsuser -f root       # Show user details"
+echo "  fsck /dev/hd4        # Check file system"
 echo ""
 echo "🎯 REMEMBER: Use 'source aix_simulation_comprehensive.sh'"
 echo "📚 This simulates real AIX - NOT actual system!"
