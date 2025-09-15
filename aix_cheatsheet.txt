@@ -1,0 +1,786 @@
+# Table of Contents
+1. [Command Comparison](#command-comparison)
+2. [Advanced AIX Features](#advanced-aix-only-features)
+3. [Key Concepts](#key-aix-specific-concepts)
+4. [Practice Scenarios](#practice-scenarios)
+5. [Quick Reference](#quick-reference-commands)
+6. [Additional Commands](#additional-aix-commands-and-concepts)
+7. [Troubleshooting](#troubleshooting-common-issues)
+8. [Real-World Examples](#real-world-aix-administration-examples)
+9. [Best Practices](#aix-best-practices) 
+10. [Error Messages & Solutions](#common-aix-error-messages-and-solutions)
+11. [SMIT Guide](#smit-system-management-interface-tool-quick-guide)
+12. [Advanced Troubleshooting](#advanced-troubleshooting-scenarios)
+13. [Automation & Scripting](#automation-and-scripting)
+14. [Conclusion & Resources](#conclusion)
+
+# IBM AIX Command Cheatsheet
+IBM AIX (Advanced Interactive eXecutive) is a Unix-based operating system developed by IBM for its Power Systems servers. This cheatsheet provides a comparison between common Linux commands and their AIX equivalents to help system administrators transition between these environments.
+## Command Comparison
+| **Linux Command**                 | **AIX Command**                   | **Description** |
+|------------------------------------|------------------------------------|-------------------------------|
+| **System Information**             |                                    |                               |
+| `uname -a`                        | `uname -a`                        | Complete system information   |
+| `lscpu`                           | `lsdev -Cc processor` / `prtconf` | CPU information               |
+| `free -h`                         | `lsps -a` / `bootinfo -r`         | Memory information |
+| `lshw`                            | `lsdev`                           | Hardware information |
+| `uname -r`                        | `oslevel` / `oslevel -s`          | OS version |
+| `uptime`                          | `uptime`                          | System uptime |
+| `hostname`                        | `hostname`                        | System hostname |
+| `dmidecode`                       | `lsattr -El sys0`                 | System attributes |
+| **File System**                   |                                   |                 |
+| `df -h`                           | `df -g`                           | Disk space usage               |
+| `ls -l`                           | `ls -l`                           | List files detailed            |
+| `pwd`                             | `pwd`                             | Current directory              |
+| `cd /path`                        | `cd /path`                        | Change directory               |
+| `mount`                           | `lsfs`                            | List mounted file systems      |
+| `mount /dev/sda1 /mnt`            | `mount /dev/lv01 /data`           | Mount file system              |
+| `mkfs.ext4 /dev/sda1`             | `mkfs -V jfs2 /dev/hdisk1`        | Create file system             |
+| `fdisk -l`                        | `lspv`                            | List physical volumes          |
+| `fsck /dev/sda1`                  | `fsck /dev/hd4`                   | File system check              |
+| `resize2fs /dev/sda1`             | `chfs -a size=+1G /var`           | Extend file system             |
+| `tune2fs -l /dev/sda1`            | `lsfs -q /var`                    | File system info               |
+| `dumpe2fs /dev/sda1`              | `lsfs -l /var`                    | Detailed FS info               |
+| `mount -o remount,rw /`           | `mount -o rw /dev/hd4 /`          | Remount file system            |
+| N/A                               | `crfs -v jfs2 -g datavg -m /data -a size=2G` | Create and mount FS            |
+| **Process Management**            |                                   |                 |
+| `ps -ef`                          | `ps -ef`                          | List all processes              |
+| `kill -9 PID`                     | `kill -9 PID`                     | Kill process                    |
+| `top`                             | `topas`                           | Real-time processes             |
+| `htop`                            | `nmon`                            | Advanced process monitor        |
+| `jobs`                            | `jobs`                            | List active jobs                |
+| `pstree`                          | `ps -ef \| grep`                  | Process tree                    |
+| `pidstat`                         | `ps aux`                          | Process statistics              |
+| **Performance Monitoring**        |                                   |                 |
+| `iostat -x 1 5`                   | `iostat 1 5`                      | I/O statistics                   |
+| `vmstat 1 5`                      | `vmstat 1 5`                      | Virtual memory stats             |
+| `sar -u 1 5`                      | `sar -u 1 5`                      | CPU utilization                  |
+| `free -m`                         | `svmon -G`                        | Memory usage                     |
+| N/A                               | `svmon -P -t 10`                  | Top processes by memory          |
+| N/A                               | `filemon -o /tmp/file.out`        | File I/O monitoring              |
+| N/A                               | `tprof -x sleep 10`               | CPU profiling                    |
+| N/A                               | `netpmon -o /tmp/net.out`         | Network performance              |
+| N/A                               | `lparstat -i`                     | LPAR statistics                  |
+| **Memory and Paging**             |                                   |                 |
+| `swapon -s`                       | `lsps -s`                         | Swap space summary               |
+| `mkswap /dev/sdb1`                | `mkps -s 4G hdisk1`               | Create paging space               |
+| `swapon /dev/sdb1`                | `swapon /dev/paging00`            | Activate paging space             |
+| `swapoff /dev/sdb1`               | `swapoff /dev/paging00`           | Deactivate paging space           |
+| **User Management**               |                                   |                 |
+| `whoami`                          | `whoami`                          | Current user                      |
+| `id`                              | `id`                              | User and group IDs                |
+| `su - username`                   | `su - username`                   | Switch user                       |
+| `cat /etc/passwd`                 | `lsuser ALL`                      | List all users                    |
+| `useradd username`                | `mkuser username`                 | Create user                       |
+| `userdel username`                | `rmuser username`                 | Remove user                       |
+| `usermod -G group username`       | `chuser groups=group username`    | Modify user                       |
+| `passwd username`                 | `passwd username`                 | Change password                   |
+| N/A                               | `lsuser -f testuser`              | Show user attributes              |
+| N/A                               | `pwdck -t ALL`                    | Check password consistency        |
+| N/A                               | `lssec -f /etc/security/user -s user` | Security attributes              |
+| N/A                               | `chsec -f /etc/security/user -s user -a maxage=90` | Set security policy              |
+| **Network**                       |                                   |                 |
+| `ip addr`                         | `ifconfig -a`                     | Network interfaces                |
+| `ip route show`                   | `netstat -rn`                     | Routing table                     |
+| `netstat -rn`                     | `netstat -rn`                     | Routing table                     |
+| `ping host`                       | `ping host`                       | Test connectivity                 |
+| `traceroute host`                 | `traceroute host`                 | Trace network path                |
+| `ip link set eth0 up`             | `ifconfig en0 up`                 | Bring interface up                |
+| `ip link set eth0 down`           | `ifconfig en0 down`               | Bring interface down              |
+| `ip addr add 192.168.1.10/24 dev eth0` | `ifconfig en0 192.168.1.10 netmask 255.255.255.0` | Set IP address                   |
+| `ip route add default via 192.168.1.1` | `route add default 192.168.1.1`  | Add default route                 |
+| `ethtool eth0`                    | `entstat -d en0`                  | Interface statistics              |
+| `netstat -i`                      | `netstat -i`                      | Interface statistics              |
+| N/A                               | `lssrc -g tcpip`                  | List TCP/IP services              |
+| N/A                               | `startsrc -g tcpip`               | Start TCP/IP services             |
+| N/A                               | `stopsrc -g tcpip`                | Stop TCP/IP services              |
+| **Package Management**            |                                   |                 |
+| `yum install pkg`                 | `installp -a pkg`                 | Install package                   |
+| `rpm -qa`                         | `lslpp -L`                        | List installed packages           |
+| `yum update`                      | `installp -u`                     | Update packages                   |
+| `rpm -e package`                  | `installp -u package`             | Remove package                    |
+| `yum search package`              | `lslpp -L \| grep package`        | Search packages                   |
+| `rpm -qi package`                 | `lslpp -l package`                | Package information               |
+| `rpm -ql package`                 | `lslpp -f package`                | List package files                |
+| `yum history`                     | `lslpp -h package`                | Package history                   |
+| `rpm -V package`                  | `lppchk -v package`               | Verify package                    |
+| N/A                               | `smitty install`                  | GUI package installation          |
+| N/A                               | `instfix -i \| grep ML`           | List maintenance levels           |
+| N/A                               | `oslevel -rl`                     | Show filesets below OS level      |
+| N/A                               | `lslpp -Lc \| grep ":C:"`         | List committed packages           |
+| N/A                               | `installp -C`                     | Commit applied packages           |
+| N/A                               | `installp -r package`             | Reject applied package            |
+| **Service Management**            |                                   |                 |
+| `systemctl status svc`            | `lssrc -a`                        | List all services                 |
+| `systemctl start svc`             | `startsrc -s service`             | Start service                     |
+| `systemctl stop svc`              | `stopsrc -s service`              | Stop service                      |
+| `systemctl enable service`        | `chrctcp -S -a service`           | Enable service                    |
+| `systemctl disable service`       | `chrctcp -S -d service`           | Disable service                   |
+| `systemctl restart service`       | `stopsrc -s service; startsrc -s service` | Restart service                  |
+| `systemctl reload service`        | `refresh -s service`              | Reload service                    |
+| `crontab -l`                      | `crontab -l`                      | List cron jobs                    |
+| **Volume Group Management**       |                                   |                 |
+| `vgs`                             | `lsvg`                            | List volume groups                |
+| `vgcreate vg01 /dev/sdb`          | `mkvg -y datavg hdisk1`           | Create volume group               |
+| `vgextend vg01 /dev/sdc`          | `extendvg datavg hdisk2`          | Extend volume group               |
+| `vgreduce vg01 /dev/sdc`          | `reducevg datavg hdisk2`          | Reduce volume group               |
+| `vgremove vg01`                   | `rmvg datavg`                     | Remove volume group               |
+| `vgdisplay vg01`                  | `lsvg datavg`                     | Display VG details                |
+| `vgscan`                          | `lsvg`                            | Scan for VGs                      |
+| **Logical Volume Management**     |                                   |                 |
+| `lvs`                             | `lslv`                            | List logical volumes              |
+| `lvcreate -L 5G -n lv01 vg01`     | `mklv -y datalv -t jfs2 datavg 5G` | Create logical volume             |
+| `lvextend -L +2G /dev/vg01/lv01`  | `extendlv datalv 2G`              | Extend logical volume             |
+| `lvreduce -L -1G /dev/vg01/lv01`  | `rmlv datalv`                     | Remove logical volume             |
+| `lvremove /dev/vg01/lv01`         | `rmlv datalv`                     | Remove logical volume             |
+| `lvdisplay /dev/vg01/lv01`        | `lslv datalv`                     | Display LV details                |
+| **Storage and Devices**           |                                   |                 |
+| `lsblk`                           | `lsdev -Cc disk`                  | List block devices                |
+| `lspci`                           | `lsdev -Cc adapter`               | List PCI devices                  |
+| `lsusb`                           | `lsdev -Cc usb`                   | List USB devices                  |
+| `hdparm -I /dev/sda`              | `lsattr -El hdisk0`               | Disk attributes                   |
+| N/A                               | `cfgmgr`                          | Configure devices                 |
+| N/A                               | `chdev -l hdisk0 -a queue_depth=32` | Change device attributes         |
+| N/A                               | `rmdev -l hdisk1 -d`              | Remove device                     |
+| **Logs and Troubleshooting**      |                                   |                 |
+| `dmesg`                           | `errpt`                           | System error log                  |
+| `dmesg \| tail -10`               | `errpt \| head -10`               | Recent errors                     |
+| `journalctl`                      | `alog -o -t boot`                 | System logs                       |
+| `journalctl --since "1 hour ago"` | `alog -f /var/adm/ras/syslog -o`  | Recent logs                       |
+| N/A                               | `errpt -a`                        | Detailed error info               |
+| N/A                               | `errpt -s 0901000025`             | Errors since date                 |
+| N/A                               | `errclear 0`                      | Clear error log                   |
+| N/A                               | `diag -c`                         | Hardware diagnostics              |
+| N/A                               | `kdb`                             | Kernel debugger                   |
+| **File Operations**               |                                   |                 |
+| `grep pattern file`               | `grep pattern file`               | Search in files                   |
+| `find / -name filename`           | `find / -name filename`           | Find files                        |
+| `chown user:group file`           | `chown user:group file`           | Change ownership                  |
+| `chmod 755 file`                  | `chmod 755 file`                  | Change permissions                |
+| `tar -czf archive.tar.gz files`   | `tar -cvf archive.tar files`      | Create archive                    |
+| `less file`                       | `pg file`                         | View file content                 |
+| **System Backup and Recovery**    |                                   |                 |
+| `dd if=/dev/sda of=/backup.img`   | `dd if=/dev/hdisk0 of=/backup.img` | Disk clone                        |
+| N/A                               | `mksysb -i /dev/rmt0`             | System backup                     |
+| N/A                               | `savevg -i -f /dev/rmt0 rootvg`   | Volume group backup               |
+| N/A                               | `restvg -f /dev/rmt0 hdisk1`      | Restore volume group              |
+| N/A                               | `alt_disk_copy -d hdisk1`         | Clone system disk                 |
+| N/A                               | `nim -o bos_inst -a source=mksysb client` | Network install                  |
+| **AIX-Specific Tools**            |                                   |                 |
+| N/A                               | `smit`                            | System Management Interface Tool |
+| N/A                               | `diag`                            | Hardware Diagnostics              |
+| N/A                               | `bootlist -m normal -o`           | Display boot list                 |
+| N/A                               | `bootlist -m normal hdisk0`       | Set boot device                   |
+| N/A                               | `lparstat`                        | LPAR statistics                   |
+| N/A                               | `odmget -q name=hdisk0 CuDv`      | Object Data Manager query         |
+| N/A                               | `snapcore`                        | System snapshot                   |
+| N/A                               | `bosboot`                         | Create boot image                 |
+## Advanced AIX-Only Features
+### WPAR (Workload Partitions) Management
+| **Function**         | **AIX Command**               | **Description**                 |
+|----------------------|------------------------------|---------------------------------|
+| List WPARs           | `lswpar`                     | Show all workload partitions    |
+| Create WPAR          | `mkwpar -n wpar1 -r`         | Create a new WPAR               |
+| Start WPAR           | `startwpar wpar1`            | Start workload partition        |
+| Stop WPAR            | `stopwpar wpar1`             | Stop workload partition         |
+| Remove WPAR          | `rmwpar wpar1`               | Remove workload partition       |
+| WPAR info            | `lswpar -v wpar1`            | Detailed WPAR information       |
+| WPAR resources       | `wparexec -n wpar1 ps -ef`   | Execute command in WPAR         |
+| WPAR sync            | `syncwpar -n wpar1`          | Synchronize WPAR with global    |
+### ODM (Object Data Manager) Operations
+| **Function**         | **AIX Command**                   | **Description**                 |
+|----------------------|-----------------------------------|---------------------------------|
+| Query devices        | `odmget -q name=hdisk0 CuDv`      | Get device info from ODM        |
+| Query attributes     | `odmget -q name=hdisk0 CuAt`      | Get device attributes           |
+| Add ODM entry        | `odmadd file.add`                 | Add entries to ODM              |
+| Delete ODM entry     | `odmdelete -q name=hdisk0 CuDv`   | Delete ODM entries              |
+| Show ODM classes     | `odmshow CuDv`                    | Display ODM class structure     |
+| Backup ODM           | `savebase -d /tmp/odmbackup`      | Backup ODM database             |
+| Restore ODM          | `restbase -d /tmp/odmbackup`      | Restore ODM database            |
+| Check ODM            | `odmcheck`                        | Verify ODM consistency          |
+### AIX System Tuning
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| List tunables            | `lsattr -E -l sys0`               | System tunable parameters        |
+| Set tunable              | `chdev -l sys0 -a maxuproc=200`   | Change system parameter          |
+| Network tunables         | `no -a`                           | Show network options             |
+| Set network tunable      | `no -o tcp_sendspace=65536`       | Set network parameter            |
+| Virtual memory tunables  | `vmo -a`                          | Show VM parameters               |
+| Set VM tunable           | `vmo -o minperm%=5`               | Set VM parameter                 |
+| I/O tunables             | `ioo -a`                          | Show I/O parameters              |
+| Set I/O tunable          | `ioo -o maxpout=33`               | Set I/O parameter                |
+| Schedule tunables        | `schedo -a`                       | Show scheduler parameters        |
+### AIX 7.x Specific Features
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| Live update status       | `suma -l`                         | Service Update Management Assistant |
+| Download fixes           | `suma -d -s oslevel`              | Download and install fixes      |
+| Security scanning        | `suma -x -a RqType=Security`      | Download security fixes         |
+| Live kernel update       | `kexec -l`                        | Live kernel replacement         |
+| Multibos operations      | `multibos -s`                     | Show alternate boot environments|
+| Create multibos          | `multibos -Xc -l hdisk1`          | Create alternate boot environment|
+| Switch multibos          | `multibos -S -l hdisk1`           | Switch to alternate environment |
+| Trusted computing        | `tcbck -n tree`                   | Trusted Computing Base check    |
+### Advanced Storage Operations
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| Create mirrored VG        | `mkvg -y datavg -s 32 hdisk1 hdisk2` | Create VG with specific PP size |
+| Mirror logical volume     | `mklvcopy datalv 2`               | Create LV mirror                |
+| Sync LV mirrors           | `syncvg -l datalv`                | Synchronize LV mirrors          |
+| Remove LV mirror          | `rmlvcopy datalv 1`               | Remove LV mirror copy           |
+| Move LV                   | `migratepv hdisk1 hdisk2`         | Move LV between PVs             |
+| Split mirror VG           | `splitlvcopy datalv 1`            | Split mirrored LV               |
+| Hot spare setup           | `chpv -h y hdisk3`                | Configure hot spare disk        |
+| Force vary on VG          | `varyonvg -f datavg`              | Force VG online                 |
+| Import VG                 | `importvg -y newvg hdisk1`        | Import foreign VG               |
+| Export VG                 | `exportvg datavg`                 | Export volume group             |
+### Advanced Network Configuration
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| EtherChannel setup        | `mkdev -c adapter -s pseudo -t ibm_ech` | Create EtherChannel            |
+| Configure EtherChannel    | `chdev -l ent2 -a netaddr=192.168.1.10` | Configure adapter              |
+| VLAN configuration        | `mkvdev -vlan -vadapter ent0 -tagid 100` | Create VLAN interface          |
+| Link aggregation          | `entstat -d ent0`                | Check link aggregation status   |
+| Network install server    | `nim -o define -t lpp_source -a server=master` | Define NIM resource           |
+| DHCP server setup         | `startsrc -s dhcpsd`             | Start DHCP server               |
+| DNS configuration         | `chrctcp -S -a named`            | Configure DNS service           |
+## Advanced AIX Commands
+### Comprehensive Monitoring and Troubleshooting
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| System trace             | `trace -a -j 001,002,003`         | Start system trace              |
+| Stop trace               | `trcstop`                         | Stop system tracing             |
+| Format trace             | `trcrpt trace.raw > trace.out`    | Format trace output             |
+| Process trace            | `procstack PID`                   | Show process stack trace        |
+| Core dump analysis       | `dbx -c core program`             | Analyze core dump               |
+| Kernel dump              | `sysdumpstart -p`                 | Start kernel dump               |
+| Dump analysis            | `crash vmcore.0 vmunix`           | Analyze system dump             |
+| Live system analysis     | `kdb`                             | Kernel debugger                 |
+| Memory leak detection    | `rmss -c 300 -r RSS_cmd`          | Memory analysis                 |
+| Deadlock detection       | `procstack -a`                    | Show all process stacks         |
+| System call trace        | `truss -f -o output command`      | Trace system calls              |
+| Library trace            | `truss -t open,read,write command`| Trace specific calls            |
+### AIX Security Commands
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| Security check           | `tcbck -n tree`                   | Check system security           |
+| Audit system             | `audit start`                     | Start system auditing           |
+| Show failed logins       | `who /var/adm/wtmp`               | Failed login attempts           |
+| Lock account             | `chuser account_locked=true user` | Lock user account               |
+| Password security        | `pwdck -n ALL`                    | Check password security         |
+| File permissions         | `tcbck -a`                         | Check file permissions          |
+| Security logs            | `alog -o -t security`              | View security logs              |
+| Encryption status        | `lsdev -Cc crypto`                 | List crypto devices             |
+### Advanced Performance Analysis
+| **Function**             | **AIX Command**                   | **Description**                 |
+|--------------------------|-----------------------------------|---------------------------------|
+| Workload Manager         | `wlmstat`                         | Workload manager statistics     |
+| WLM tuning               | `wlmcntrl -p`                     | Workload manager control        |
+| Thread analysis          | `ps -eF THREAD`                   | Show process threads            |
+| Memory pools             | `vmstat -P`                       | Memory pool statistics          |
+| Shared memory            | `ipcs -m`                         | Shared memory segments          |
+| Semaphores               | `ipcs -s`                         | System semaphores               |
+| Message queues           | `ipcs -q`                         | Message queue status            |
+| Process accounting       | `accton /var/adm/pacct`           | Enable process accounting       |
+| Detailed vmstat          | `vmstat -s`                       | Detailed VM statistics          |
+| CPU binding              | `bindprocessor -q`                | Show CPU binding                |
+## Advanced AIX Commands
+| **Linux Command**                 | **AIX Command**                   | **Description** |
+|-----------------------------------|-----------------------------------|-----------------|
+| **Memory and Paging**             |                                   |                 |
+| **Hardware Information**          |                                   |                 |
+| `lscpu`                           | `prtconf`                         | CPU information |
+| **Performance Monitoring**        |                                   |                 |
+| `sar -u 1 5`                      | `sar -u 1 5`                      | Display CPU utilization statistics |
+| N/A                               | `filemon`                         | File I/O monitoring |
+| N/A                               | `tprof`                           | CPU profiling |
+| N/A                               | `probevue`                        | Performance analysis |
+| **File System Operations**        |                                   |                 |
+| **Volume Group Management**       |                                   |                 |
+| `vgdisplay vg01` | `lsvg datavg` | Display volume group info |
+| `vgscan` | `lsvg` | List all volume groups |
+| **Logical Volume Management** | | |
+| `lvreduce -L -1G /dev/vg01/lv01` | `rmlv datalv` (then recreate smaller) | Reduce logical volume |
+| `lvdisplay /dev/vg01/lv01` | `lslv datalv` | Display logical volume info |
+| **Network Configuration** | | |
+| `ip addr add 192.168.1.10/24 dev eth0` | `ifconfig en0 192.168.1.10 netmask 255.255.255.0` | Configure IP address |
+| `ethtool eth0` | `entstat -d en0` | Display ethernet statistics |
+| **System Services and Daemons** | | |
+| **Security and Access Control** | | |
+| `passwd username` | `passwd username` | Change user password |
+| `usermod -G group username` | `chuser groups=group username` | Add user to group |
+| `sudo command` | `sudo command` | Execute as another user |
+| N/A | `mkuser username` | Create user account |
+| N/A | `rmuser username` | Remove user account |
+| N/A | `chsec -f /etc/security/user -s username -a maxage=90` | Set password aging |
+| **System Backup and Recovery** | | |
+| `dd if=/dev/sda of=/backup.img` | `dd if=/dev/hdisk0 of=/backup.img` | Create disk image |
+| N/A | `mksysb -i /dev/rmt0` | Create system backup |
+| N/A | `savevg -i -f /dev/rmt0 rootvg` | Save volume group |
+| N/A | `alt_disk_copy -d hdisk1` | Alternate disk copy |
+### AIX Clustering and High Availability
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Cluster status | `lscluster -m` | Show cluster membership |
+| Node status | `clstat` | Cluster node status |
+| Resource groups | `clRGinfo` | Resource group information |
+| Start cluster | `startcluster` | Start cluster services |
+| Stop cluster | `stopcluster` | Stop cluster services |
+| Add cluster node | `addnode` | Add node to cluster |
+| Remove cluster node | `rmnode` | Remove node from cluster |
+| HACMP status | `clstat -o` | HACMP cluster status |
+| Resource monitoring | `clRGmove` | Move resource group |
+| Heartbeat status | `lsdev -Cc cluster` | Cluster heartbeat devices |
+### PowerHA SystemMirror Commands
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Cluster info | `clinfo` | Display cluster configuration |
+| Start PowerHA | `clstart` | Start PowerHA services |
+| Stop PowerHA | `clstop` | Stop PowerHA services |
+| Verify cluster | `clverify` | Verify cluster configuration |
+| Test resources | `cltest` | Test cluster resources |
+| Show resources | `clshowres` | Show all cluster resources |
+| Resource status | `clstat -a` | All resource status |
+| Cluster logs | `cldiag` | Cluster diagnostic information |
+## Key AIX-Specific Concepts
+1. **ODM (Object Data Manager)**: AIX uses ODM to store system configuration information, unlike Linux which typically uses plain text files. ODM provides a consistent interface for device configuration and system management.
+2. **JFS2 (Journaled File System)**: AIX's native file system with advanced features like online resizing, snapshots, and compression. More advanced than ext4 with better performance for large files.
+3. **LPAR (Logical Partitioning)**: Hardware-level partitioning that allows multiple independent AIX instances on a single Power Systems server. Provides better isolation than virtualization.
+4. **SMIT (System Management Interface Tool)**: Menu-driven interface for system administration. Generates command-line equivalents and provides guided configuration.
+5. **WPARs (Workload Partitions)**: OS-level virtualization similar to containers, allowing multiple isolated user spaces within a single AIX instance.
+6. **AIX Logical Volume Manager (LVM)**: Advanced storage management with features like mirroring, striping, and online operations. More sophisticated than Linux LVM.
+7. **NIM (Network Installation Manager)**: Centralized framework for installing, updating, and maintaining AIX systems across a network. Supports automated deployments.
+8. **PowerHA SystemMirror**: IBM's high availability solution for AIX, providing cluster management and automatic failover capabilities.
+9. **Trusted Computing Base (TCB)**: Security framework that maintains file integrity and system security through checksums and access controls.
+10. **SUMA (Service Update Management Assistant)**: Automated tool for downloading and installing AIX updates and fixes from IBM.
+11. **Virtual I/O Server (VIOS)**: Specialized AIX partition that provides I/O resources to other LPARs in a virtualized environment.
+12. **Multibos**: Capability to maintain multiple boot environments on the same system, allowing safe updates and easy rollback.
+## Note on Command Options
+### AIX Virtualization and Power Management
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| LPAR information | `lparstat -i` | Display LPAR configuration |
+| CPU usage by LPAR | `lparstat 1 5` | Monitor LPAR CPU usage |
+# IBM AIX Command Cheatsheet
+
+IBM AIX (Advanced Interactive eXecutive) is a Unix-based operating system developed by IBM for its Power Systems servers.
+# Services
+This cheatsheet provides a side-by-side comparison of common Linux commands and their AIX equivalents to help system administrators transition between these environments.
+lssrc -a             # List all services
+## Command Comparison
+
+| **Linux Command**                 | **AIX Command**                   | **Description**                 |
+|-----------------------------------|-----------------------------------|---------------------------------|
+| **System Information**            |                                   |                                 |
+| **File System**                  |                                   |                                 |
+| **Process Management**           |                                   |                                 |
+| `pstree`                         | `ps -ef | grep`                   | Process tree                    |
+| **Performance Monitoring**       |                                   |                                 |
+| **Memory and Paging**            |                                   |                                 |
+| **User Management**              |                                   |                                 |
+| **Network**                      |                                   |                                 |
+| **Package Management**           |                                   |                                 |
+| `yum search package`             | `lslpp -L | grep package`         | Search packages                 |
+| N/A                              | `instfix -i | grep ML`            | List maintenance levels         |
+| N/A                              | `lslpp -Lc | grep ":C:"`         | List committed packages         |
+| **Service Management**           |                                   |                                 |
+| **Volume Group Management**      |                                   |                                 |
+| **Logical Volume Management**    |                                   |                                 |
+| `lvcreate -L 5G -n lv01 vg01`    | `mklv -y datalv -t jfs2 datavg 5G`| Create logical volume           |
+| **Storage and Devices**          |                                   |                                 |
+| **Logs and Troubleshooting**     |                                   |                                 |
+| `dmesg | tail -10`               | `errpt | head -10`                | Recent errors                   |
+| **File Operations**              |                                   |                                 |
+| **System Backup and Recovery**   |                                   |                                 |
+| `dd if=/dev/sda of=/backup.img`  | `dd if=/dev/hdisk0 of=/backup.img`| Disk clone                      |
+| **AIX-Specific Tools**           |                                   |                                 |
+| N/A                              | `smit`                            | System Management Interface Tool|
+
+## Additional AIX Commands and Concepts
+### AIX-Specific File System Commands
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Extend file system | `chfs -a size=+1G /var` | Increase file system size |
+| List file system attributes | `lsfs -q /var` | Show file system details |
+| Check file system | `fsck -y /dev/hd4` | File system check and repair |
+| Display mount options | `lsfs -v jfs2` | Show all JFS2 file systems |
+| Create file system | `crfs -v jfs2 -g datavg -m /data -a size=2G` | Create and mount file system |
+### AIX Error and Diagnostics
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Show all errors | `errpt` | Display error log |
+| Show detailed errors | `errpt -a` | Detailed error information |
+| Show errors by date | `errpt -s 0901000025` | Errors since September 1st |
+| Clear error log | `errclear 0` | Clear all error entries |
+| Hardware diagnostics | `diag -c` | Run hardware diagnostics |
+| System dump analysis | `kdb` | Kernel debugger |
+### AIX Performance and Monitoring
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Memory monitoring | `svmon -G` | Global memory statistics |
+| Process memory | `svmon -P -t 10` | Top 10 processes by memory |
+| I/O monitoring | `filemon -o /tmp/file.out` | File I/O monitoring |
+| CPU profiling | `tprof -x sleep 10` | CPU profiling for 10 seconds |
+| Network monitoring | `netpmon -o /tmp/net.out` | Network performance monitoring |
+| LPAR statistics | `lparstat -i` | LPAR configuration info |
+### AIX Security and User Management
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Create user | `mkuser -a id=1001 groups=staff testuser` | Create user with specific ID |
+| Remove user | `rmuser -p testuser` | Remove user and home directory |
+| Change user attributes | `chuser maxage=90 testuser` | Set password expiry |
+| List user attributes | `lsuser -f testuser` | Show all user attributes |
+| Password security | `pwdck -t ALL` | Check password file consistency |
+| Security attributes | `lssec -f /etc/security/user -s testuser` | Show security settings |
+### AIX System Configuration
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Configure devices | `cfgmgr` | Discover and configure new devices |
+| List device attributes | `lsattr -El hdisk0` | Show disk attributes |
+| Change device attributes | `chdev -l hdisk0 -a queue_depth=32` | Modify device settings |
+| Remove device | `rmdev -l hdisk1 -d` | Remove device configuration |
+| ODM queries | `odmget -q name=hdisk0 CuDv` | Query Object Data Manager |
+| Boot list | `bootlist -m normal -o` | Show boot device order |
+### AIX Backup and Recovery
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| System backup | `mksysb -i /dev/rmt0` | Create bootable system backup |
+| Volume group backup | `savevg -i -f /dev/rmt0 datavg` | Backup volume group |
+| Restore volume group | `restvg -f /dev/rmt0 hdisk1` | Restore volume group |
+| Clone system disk | `alt_disk_copy -d hdisk1` | Clone to alternate disk |
+| NIM operations | `nim -o bos_inst -a source=mksysb client` | Network installation |
+### AIX Network Configuration
+| **Function** | **AIX Command** | **Description** |
+|--------------|-----------------|-----------------|
+| Configure IP | `ifconfig en0 192.168.1.10 netmask 255.255.255.0` | Set IP address |
+| Add route | `route add default 192.168.1.1` | Add default gateway |
+| Network statistics | `entstat -d en0` | Ethernet adapter statistics |
+| Network services | `lssrc -g tcpip` | List TCP/IP services |
+| Start TCP/IP | `startsrc -g tcpip` | Start all TCP/IP services |
+| Host configuration | `hostent -a 192.168.1.5 server1` | Add host entry |
+## Troubleshooting Common Issues
+### Storage Issues
+```bash
+# Check disk space
+df -g
+# Check for failed disks
+lspv | grep -i missing
+# Check volume group status
+lsvg -o
+# Verify file system consistency
+fsck -y /dev/hd4
+```
+### Performance Issues
+```bash
+# Check CPU usage
+sar -u 1 10
+# Check memory usage
+svmon -G
+# Check I/O bottlenecks
+iostat -D 1 5
+# Check for processes consuming resources
+ps aux | sort -k3 -nr | head -10
+```
+### Network Issues
+```bash
+# Check interface status
+netstat -i
+# Check routing
+netstat -rn
+# Test connectivity
+ping gateway_ip
+# Check for network errors
+entstat -d en0 | grep -i error
+```
+### System Errors
+```bash
+# Check recent errors
+errpt | head -20
+# Check hardware status
+lsdev -Cc disk | grep -v Available
+# Run diagnostics
+diag -c
+# Check system logs
+alog -o -t boot
+```
+## Real-World AIX Administration Examples
+### Example 1: Creating a Complete Storage Solution
+```bash
+# 1. List available disks
+lspv
+# 2. Create volume group
+mkvg -y appvg hdisk2 hdisk3
+# 3. Create logical volume
+mklv -y applv -t jfs2 appvg 5G
+# 4. Create file system
+crfs -v jfs2 -d applv -m /app -A yes
+# 5. Mount file system
+mount /app
+# 6. Verify
+df -g /app
+lsfs | grep /app
+```
+### Example 2: User Management Workflow
+```bash
+# 1. Create user with specific attributes
+mkuser -a id=2001 pgrp=staff groups=staff,admin home=/home/appuser shell=/usr/bin/ksh appuser
+# 2. Set password
+passwd appuser
+# 3. Set password policies
+chuser maxage=60 minage=1 appuser
+# 4. Create home directory
+mkdir /home/appuser
+chown appuser:staff /home/appuser
+chmod 755 /home/appuser
+# 5. Verify user creation
+lsuser -f appuser
+id appuser
+```
+### Example 3: Performance Monitoring Setup
+```bash
+# 1. Start comprehensive monitoring
+nohup topas -R -P -L -f /tmp/topas.out 300 288 &
+# 2. Monitor file I/O
+filemon -o /tmp/filemon.out -O all &
+sleep 300
+kill %1
+# 3. Network monitoring
+netpmon -o /tmp/netpmon.out &
+sleep 300
+kill %1
+# 4. Generate reports
+topas_nmon /tmp/topas.out
+```
+### Example 4: System Health Check Script
+```bash
+#!/bin/ksh
+# AIX Health Check Script
+echo "=== System Information ==="
+oslevel -s
+prtconf | head -10
+echo "=== Memory Usage ==="
+svmon -G
+echo "=== Disk Space ==="
+df -g
+echo "=== Volume Groups ==="
+lsvg -o
+echo "=== Error Report ==="
+errpt | head -10
+echo "=== Failed Services ==="
+lssrc -a | grep inoperative
+echo "=== Network Interfaces ==="
+netstat -i
+```
+## AIX Best Practices
+### Security Best Practices
+- Always use `chuser` instead of directly editing `/etc/security/user`
+- Implement password aging with `maxage` and `minage`
+- Use `sudo` for administrative tasks instead of direct root access
+- Regularly check `errpt` for security-related errors
+- Configure TCP wrappers in `/etc/hosts.allow` and `/etc/hosts.deny`
+### Storage Best Practices
+- Use descriptive names for volume groups and logical volumes
+- Always backup before making storage changes with `savevg`
+- Monitor disk usage with regular `df -g` checks
+- Use `lsvg -p vgname` to check physical volume status
+- Implement proper file system planning with appropriate sizes
+### Performance Best Practices
+- Use `topas` for real-time monitoring
+- Schedule regular `sar` data collection via cron
+- Monitor critical file systems with `filemon`
+- Use `lparstat` to monitor LPAR resource usage
+- Implement proper swap space sizing with `lsps -a`
+### Backup Best Practices
+- Create regular `mksysb` backups
+- Test restore procedures with `alt_disk_copy`
+- Use `savevg` for application volume groups
+- Document backup and recovery procedures
+- Verify backup integrity regularly
+## Common AIX Error Messages and Solutions
+### Error: "0516-404 allocp: This system cannot fulfill the allocation request"
+**Solution:**
+```bash
+# Check available space in volume group
+lsvg datavg
+# Extend volume group if needed
+extendvg datavg hdisk4
+```
+### Error: "0506-342 fsck: Cannot continue. File system is mounted"
+**Solution:**
+```bash
+# Unmount file system first
+umount /data
+# Then run fsck
+fsck -y /dev/datalv
+# Remount
+mount /data
+```
+### Error: "0513-040 smit: Cannot open the file /dev/console"
+**Solution:**
+```bash
+# Check console device
+lsdev -Cc tty | grep console
+# Reconfigure if needed
+cfgmgr
+```
+## SMIT (System Management Interface Tool) Quick Guide
+### SMIT Navigation
+- **Enter**: Select menu item
+- **F3**: Exit/Cancel
+- **F4**: List available options
+- **F6**: Command line equivalent
+- **F8**: Show images/examples
+- **Tab**: Move between fields
+### Common SMIT Fast Paths
+```bash
+smit install          # Software installation
+smit users            # User management
+smit storage          # Storage management
+smit tcpip            # Network configuration
+smit fs               # File system management
+smit devices          # Device management
+smit lvm              # Logical volume management
+smit backup           # Backup and restore
+```
+## Advanced Troubleshooting Scenarios
+### Boot Issues
+```bash
+# Check boot list
+bootlist -m normal -o
+# Set alternate boot device
+bootlist -m normal hdisk1
+# Boot from alternate disk
+bosboot -ad hdisk1
+# Create new boot image
+bosboot -a
+# Check rootvg status
+lsvg -l rootvg
+```
+### Performance Bottlenecks
+```bash
+# Comprehensive performance check
+topas -P -L -f /tmp/perf.out 300 288 &
+# Memory bottleneck analysis
+svmon -P -t 20 | head -30
+# I/O bottleneck detection
+iostat -D 1 10
+# Network performance issues
+entstat -d en0 | grep -i error
+netstat -s | grep -i error
+# CPU utilization analysis
+lparstat -h 1 10
+```
+### Storage Troubleshooting
+```bash
+# Disk failure detection
+lspv | grep -E "(missing|removed)"
+# Volume group issues
+lsvg -l datavg | grep -E "(stale|closed)"
+# File system corruption
+fsck -y /dev/hd4
+# Check mirroring status
+lslv -m datalv
+# Resync stale partitions
+syncvg datavg
+```
+### Network Connectivity Issues
+```bash
+# Complete network diagnostic
+netstat -rn
+ifconfig -a
+entstat -d en0
+ping -c 5 gateway_ip
+traceroute destination
+# DNS resolution issues
+nslookup hostname
+host hostname
+# Check network services
+lssrc -g tcpip | grep -v active
+```
+### Security and Access Issues
+```bash
+# Check failed logins
+who /var/adm/wtmp | grep -v LOGIN
+# Verify file permissions
+tcbck -n tree | head -20
+# Check user account status
+lsuser -a account_locked ALL
+# Audit system security
+tcbck -a | grep UNKNOWN
+```
+## Automation and Scripting
+### Essential Daily Commands
+```bash
+# Quick system health check
+oslevel && uptime && errpt | head -5 && df -g | head -10
+# Storage overview
+lspv && lsvg -o && df -g
+# Performance snapshot
+topas -1 && vmstat 1 3 && iostat 1 3
+# Service status
+lssrc -a | grep -E "(active|inoperative)"
+# Network status
+netstat -i && ifconfig -a | grep -E "(inet|flags)"
+```
+### Automation and Scripting
+```bash
+#!/bin/ksh
+# Comprehensive AIX Health Check Script
+# Set variables
+DATE=$(date +%Y%m%d_%H%M%S)
+LOGFILE="/tmp/healthcheck_${DATE}.log"
+# Function to log with timestamp
+log() {
+    echo "$(date): $1" | tee -a $LOGFILE
+}
+# System information
+log "=== SYSTEM INFORMATION ==="
+oslevel -s | tee -a $LOGFILE
+lparstat -i | tee -a $LOGFILE
+# Storage check
+log "=== STORAGE CHECK ==="
+df -g | awk '$4 > 90 {print "WARNING: " $7 " is " $4 "% full"}' | tee -a $LOGFILE
+lspv | grep -E "(missing|removed)" | tee -a $LOGFILE
+# Error check
+log "=== ERROR CHECK ==="
+errpt | head -10 | tee -a $LOGFILE
+# Performance check
+log "=== PERFORMANCE CHECK ==="
+vmstat 1 3 | tail -3 | tee -a $LOGFILE
+# Service check
+log "=== SERVICE CHECK ==="
+lssrc -a | grep inoperative | tee -a $LOGFILE
+log "Health check completed. Log saved to $LOGFILE"
+```
+## Conclusion & Resources
+This comprehensive cheatsheet provides extensive coverage of AIX commands, from basic system administration to advanced enterprise features. The document now includes:
+### What's Covered:
+- **Complete command mappings** between Linux and AIX
+- **Advanced AIX-only features** like WPARs, LPAR management, and PowerHA
+- **Comprehensive storage management** including LVM, snapshots, and mirroring
+- **Performance monitoring** with topas, nmon, sar, and specialized tools
+- **Security features** including TCB, auditing, and user management
+- **Virtualization** with LPAR, VIOS, and dynamic resource management
+- **Troubleshooting scenarios** for common enterprise issues
+- **Automation scripts** for health checking and monitoring
+- **Best practices** for storage, security, and performance
+### Key AIX Advantages:
+- **Enterprise reliability** with advanced error detection and recovery
+- **Scalability** through LPAR and dynamic resource allocation
+- **Security** with Trusted Computing Base and comprehensive auditing
+- **Performance** optimization for Power hardware architecture
+- **Management** through SMIT, NIM, and automated tools
+### Learning Path Recommendations:
+1. **Start with basics**: System information, file operations, process management
+2. **Master storage**: LVM concepts, volume groups, logical volumes, file systems
+3. **Learn monitoring**: Performance tools, error reporting, system health
+4. **Advance to enterprise**: LPARs, clustering, high availability
+5. **Specialize**: Virtualization, tuning, automation scripting
+### Additional Resources:
+- **IBM Knowledge Center**: Comprehensive AIX documentation
+- **IBM Redbooks**: In-depth technical guides and best practices
+- **AIX Community Forums**: Peer support and knowledge sharing
+- **IBM Support**: Official technical support and updates
+- **Training**: IBM AIX certification paths and courses
+Remember that AIX excels in enterprise environments where reliability, scalability, and advanced management features are critical. The unique features like dynamic LPAR operations, advanced LVM capabilities, and integrated high availability make it powerful for mission-critical workloads.
+For practical learning, combine this cheatsheet with hands-on practice in test environments, gradually building from basic administration to advanced enterprise features.
