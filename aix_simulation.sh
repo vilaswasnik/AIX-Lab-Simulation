@@ -136,9 +136,19 @@ function aixa() {
         return 1
     fi
 
-    # Initialize history file
+    # Initialize history file for persistent storage
     local history_file="/tmp/aixa_history_$$"
     touch "$history_file"
+    
+    # Enable bash history for this session
+    set -o history
+    
+    # Load previous history if available
+    if [[ -f "$history_file" ]]; then
+        while IFS= read -r line; do
+            history -s "$line"
+        done < "$history_file"
+    fi
     
     # Display welcome banner
     clear
@@ -155,18 +165,23 @@ function aixa() {
     echo "  • 'quit' or 'exit' - Stop the interface"
     echo ""
     echo "💡 Try queries like: 'show disk space', 'check memory', 'list disks'"
+    echo "⌨️  Use ↑↓ arrow keys to navigate command history"
     echo ""
 
     while true; do
+        # Use readline for better history support
         echo -n "Query> "
-        read -r query
+        read -e -r query
         
         # Check for empty input
         if [[ -z "$query" ]]; then
             continue
         fi
         
-        # Save to history
+        # Add to bash history for arrow key navigation
+        history -s "$query"
+        
+        # Save to persistent history file
         echo "$query" >> "$history_file"
         
         # Handle special commands
@@ -174,12 +189,13 @@ function aixa() {
             quit|exit)
                 echo ""
                 echo "👋 Goodbye! Exiting AIX natural language interface."
-                rm -f "$history_file"
+                # Keep history file for next session
                 return 0
                 ;;
             clear)
                 clear
                 echo "AIX Natural Language Interface - Type 'quit' to exit"
+                echo "⌨️  Use ↑↓ arrow keys to navigate command history"
                 echo ""
                 continue
                 ;;

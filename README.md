@@ -136,6 +136,7 @@ Enter your queries in natural language.
   • 'quit' or 'exit' - Stop the interface
 
 💡 Try queries like: 'show disk space', 'check memory', 'list disks'
+⌨️  Use ↑↓ arrow keys to navigate command history
 
 Query> show disk space
 
@@ -150,8 +151,16 @@ Filesystem    GB blocks      Free %Used    Iused %Iused Mounted on
 /dev/hd4           0.25      0.19   25%      567    11% /
 ...
 
+Query> [Press ↑ to recall previous command]
+
 Query> quit
 ```
+
+**History Features:**
+- ⌨️ Use **↑** (up arrow) to recall previous commands
+- ⌨️ Use **↓** (down arrow) to navigate forward through history
+- 📝 History persists within the same `aixa` session
+- 🔄 Easily reuse and modify previous queries
 
 ### One-Time Questions (`ask`)
 For quick questions without entering interactive mode:
