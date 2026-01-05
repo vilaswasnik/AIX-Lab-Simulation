@@ -2,18 +2,24 @@
 
 A comprehensive IBM AIX command simulation environment for learning and training purposes. This project provides a realistic AIX command-line experience without requiring actual AIX hardware or systems.
 
+## ✨ Key Features
+
+🔒 **Authentic AIX Environment**: Linux-specific commands are disabled to enforce proper AIX command usage
+📚 **Comprehensive Command Set**: Full simulation of AIX storage, performance, network, and system commands
+💡 **Learning-Focused**: Helpful suggestions when you try Linux commands by mistake
+🎯 **Realistic Output**: Commands produce actual AIX-style output
+
 ## 🚀 Quick Start
 
-### 1. Setup
+### 1. Start the Simulation
 ```bash
-# Make the simulation script executable
-chmod +x aix_simulation.sh
-
 # Source the simulation to enable AIX commands
 source ./aix_simulation.sh
 ```
 
-### 2. Basic Usage
+**That's it!** The simulation is now active in your current terminal session.
+
+### 2. Use AIX Commands Interactively
 Once sourced, you can use AIX commands just like on a real system:
 
 ```bash
@@ -26,11 +32,48 @@ lspv
 # List logical volumes in rootvg
 lsvg -l rootvg
 
-# Check file system usage
+# Check file system usage (use -g not -h!)
 df -g
 
-# Monitor system performance
+# Monitor system performance (use topas not top!)
 topas
+```
+
+**Note**: Once sourced, Linux commands like `top`, `fdisk`, `systemctl` will be disabled and suggest AIX alternatives.
+
+### 3. Exit the Simulation
+To exit and return to normal Linux environment:
+
+**Option 1** (Recommended): Close the terminal and open a new one
+
+**Option 2**: Exit the current terminal session:
+```bash
+exit
+```
+
+Then open a new terminal. The simulation only affects the current shell session.
+
+## 🔒 Linux Command Blocking
+
+This simulation blocks common Linux commands to help you learn proper AIX syntax:
+
+| ❌ Linux Command | ✅ AIX Equivalent | Purpose |
+|-----------------|------------------|---------|
+| `top` | `topas` | Performance monitoring |
+| `htop` | `topas` or `nmon` | Advanced performance |
+| `free -h` | `svmon -G` | Memory usage |
+| `lsblk` | `lspv` | List disks |
+| `fdisk -l` | `lspv` | List physical volumes |
+| `df -h` | `df -g` | Disk space (in GB) |
+| `systemctl` | `lssrc`, `startsrc`, `stopsrc` | Service management |
+| `ip addr` | `ifconfig -a` | Network interfaces |
+| `lvextend` | `extendlv` or `chfs` | Extend logical volume |
+| `yum install` | `installp -a` | Package installation |
+
+When you try a Linux command, you'll see a helpful message like:
+```
+⚠️  AIX: Command 'top' not found.
+💡 Try the AIX equivalent: topas
 ```
 
 ## 📋 Features
