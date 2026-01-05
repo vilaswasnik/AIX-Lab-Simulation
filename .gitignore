@@ -1,0 +1,61 @@
+# Compressed archives
+*.tar.gz
+*.tgz
+*.tar
+*.zip
+*.rar
+*.7z
+
+# API Keys and secrets
+.env
+.env.*
+*.key
+*.pem
+secrets.txt
+api_keys.txt
+*_secrets.*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# History and cache
+.bash_history
+.history
+/tmp/
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-*
+.project
+
+# System files
+Thumbs.db
+desktop.ini
+
+# Node modules (if ever used)
+node_modules/
+
+# Python cache (if ever used)
+__pycache__/
+*.pyc
+*.pyo
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Local configuration
+local_config.sh
+my_*.sh
+
+# Test outputs
+test_output/
+*.out
