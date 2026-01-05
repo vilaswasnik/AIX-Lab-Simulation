@@ -62,8 +62,21 @@ topas
 ### 4. Ask Questions in Natural Language (AI Assistant)
 If you have configured the OpenAI API key, you can ask questions in plain English:
 
+**Option A: Interactive Mode** (Recommended)
 ```bash
-# Ask for help with commands
+# Enter interactive natural language interface
+aixa
+
+# Now just type naturally without 'ask' prefix:
+Query> show disk space
+Query> check memory
+Query> list all disks
+Query> quit  # to exit
+```
+
+**Option B: One-Time Questions**
+```bash
+# Use 'ask' command for single questions
 ask how do I check disk space?
 ask show me all running processes
 ask what command lists physical volumes?
@@ -105,7 +118,44 @@ The integrated OpenAI-powered assistant helps you learn AIX commands naturally:
 - **Contextual Help**: Receive explanations and usage examples
 - **Learning Tool**: Understand why a command is used, not just what it is
 
-### Examples
+### Interactive Mode (`aixa`)
+The interactive mode provides a conversational interface where you can ask questions naturally without typing `ask` each time:
+
+```bash
+$ aixa
+════════════════════════════════════════════════════════════
+  AIX Natural Language Interface
+════════════════════════════════════════════════════════════
+
+Enter your queries in natural language.
+
+📚 Special Commands:
+  • 'explain <command>' - Get detailed info about a command
+  • 'history' - View command history
+  • 'clear' - Clear the screen
+  • 'quit' or 'exit' - Stop the interface
+
+💡 Try queries like: 'show disk space', 'check memory', 'list disks'
+
+Query> show disk space
+
+📚 Educational Info:
+   Report file system disk space usage in gigabytes
+
+   💡 Tip: Use df -g for GB, df -k for KB, df -m for MB
+
+Command: df -g
+────────────────────────────────────────────────────────────
+Filesystem    GB blocks      Free %Used    Iused %Iused Mounted on
+/dev/hd4           0.25      0.19   25%      567    11% /
+...
+
+Query> quit
+```
+
+### One-Time Questions (`ask`)
+For quick questions without entering interactive mode:
+
 ```bash
 ask how do I check available disk space?
 # Returns: df -g with explanation
@@ -125,8 +175,9 @@ ask how to monitor CPU performance?
 - `curl` and `jq` installed (usually pre-installed on most systems)
 - Internet connection for API calls
 
-### Commands
-- `ask <question>` - Ask any AIX-related question in natural language
+### Commands Reference
+- `aixa` - Enter interactive natural language mode (continuous conversation)
+- `ask <question>` - Ask a single question and get command suggestion
 - `aixhelp` - Show AI assistant help and status
 
 ## 🔒 Linux Command Blocking

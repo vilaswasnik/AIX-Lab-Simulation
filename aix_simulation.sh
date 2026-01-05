@@ -107,6 +107,10 @@ function aixhelp() {
     echo "  ask how do I check network interfaces?"
     echo "  ask what's the difference between lspv and lsvg?"
     echo ""
+    echo "Interactive Mode:"
+    echo "  Type 'aixa' to enter interactive natural language mode"
+    echo "  No need to type 'ask' - just ask naturally!"
+    echo ""
     echo "Setup:"
     echo "  1. Get your API key from: https://platform.openai.com/api-keys"
     echo "  2. Export it: export OPENAI_API_KEY='your-api-key'"
@@ -117,6 +121,232 @@ function aixhelp() {
     else
         echo "⚠️  API Key not set (run: export OPENAI_API_KEY='your-key')"
     fi
+}
+
+# =============================================================================
+# INTERACTIVE NATURAL LANGUAGE INTERFACE
+# =============================================================================
+
+function aixa() {
+    # Check for API key
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        echo "❌ OpenAI API key not set!"
+        echo "💡 Export your API key: export OPENAI_API_KEY='your-api-key-here'"
+        echo "💡 Add to ~/.bashrc for persistence: echo 'export OPENAI_API_KEY=\"your-key\"' >> ~/.bashrc"
+        return 1
+    fi
+
+    # Initialize history file
+    local history_file="/tmp/aixa_history_$$"
+    touch "$history_file"
+    
+    # Display welcome banner
+    clear
+    echo "════════════════════════════════════════════════════════════"
+    echo "  AIX Natural Language Interface"
+    echo "════════════════════════════════════════════════════════════"
+    echo ""
+    echo "Enter your queries in natural language."
+    echo ""
+    echo "📚 Special Commands:"
+    echo "  • 'explain <command>' - Get detailed info about a command"
+    echo "  • 'history' - View command history"
+    echo "  • 'clear' - Clear the screen"
+    echo "  • 'quit' or 'exit' - Stop the interface"
+    echo ""
+    echo "💡 Try queries like: 'show disk space', 'check memory', 'list disks'"
+    echo ""
+
+    while true; do
+        echo -n "Query> "
+        read -r query
+        
+        # Check for empty input
+        if [[ -z "$query" ]]; then
+            continue
+        fi
+        
+        # Save to history
+        echo "$query" >> "$history_file"
+        
+        # Handle special commands
+        case "${query,,}" in
+            quit|exit)
+                echo ""
+                echo "👋 Goodbye! Exiting AIX natural language interface."
+                rm -f "$history_file"
+                return 0
+                ;;
+            clear)
+                clear
+                echo "AIX Natural Language Interface - Type 'quit' to exit"
+                echo ""
+                continue
+                ;;
+            history)
+                echo ""
+                echo "📜 Command History:"
+                echo "────────────────────────────────────────────────────────────"
+                cat -n "$history_file" 2>/dev/null || echo "No history yet."
+                echo ""
+                continue
+                ;;
+            explain\ *)
+                local cmd="${query#explain }"
+                echo ""
+                _explain_command "$cmd"
+                echo ""
+                continue
+                ;;
+            hey|hi|hello)
+                echo ""
+                echo "👋 Hello! I can help you with AIX commands."
+                echo "Try: 'show disk space', 'check memory', 'list physical volumes', etc."
+                echo ""
+                continue
+                ;;
+        esac
+
+        # Process natural language query
+        echo ""
+        _process_nl_query "$query"
+        echo ""
+    done
+}
+
+function _process_nl_query() {
+    local query="$*"
+    
+    # Create the prompt for OpenAI
+    local system_prompt="You are an AIX expert. Convert natural language queries to AIX commands and execute them.
+
+Available AIX commands:
+- Storage: lspv, lsvg, lslv, lsfs, df -g/k/m
+- Performance: topas, nmon, vmstat, iostat, sar
+- System: oslevel, uname, prtconf, bootinfo
+- Network: ifconfig, netstat, entstat, ping
+- Services: lssrc, startsrc, stopsrc
+- Processes: ps -ef, w, who
+- Devices: lscfg, lsdev, lsattr
+- Errors: errpt
+- Memory: svmon, lsps
+- Users: lsuser
+
+Return ONLY a JSON object with this format:
+{
+  \"command\": \"the actual AIX command to run\",
+  \"explanation\": \"brief explanation of what the command does\",
+  \"educational\": \"helpful tip about the command\"
+}
+
+Examples:
+Query: 'show disk space' -> {\"command\": \"df -g\", \"explanation\": \"Report file system disk space usage in gigabytes\", \"educational\": \"Use df -g for GB, df -k for KB, df -m for MB\"}
+Query: 'list disks' -> {\"command\": \"lspv\", \"explanation\": \"List all physical volumes\", \"educational\": \"Use 'lspv hdisk0' for details on a specific disk\"}
+Query: 'check memory' -> {\"command\": \"svmon -G\", \"explanation\": \"Show global memory statistics\", \"educational\": \"Use 'bootinfo -r' for total RAM in KB\"}"
+
+    # Make API call
+    local response=$(curl -s https://api.openai.com/v1/chat/completions \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $OPENAI_API_KEY" \
+        -d "{
+            \"model\": \"gpt-4\",
+            \"messages\": [
+                {\"role\": \"system\", \"content\": $(echo "$system_prompt" | jq -Rs .)},
+                {\"role\": \"user\", \"content\": $(echo "$query" | jq -Rs .)}
+            ],
+            \"temperature\": 0.3,
+            \"max_tokens\": 300
+        }")
+
+    # Check for errors
+    if echo "$response" | grep -q '"error"'; then
+        echo "❌ API Error:"
+        echo "$response" | jq -r '.error.message' 2>/dev/null || echo "$response"
+        return 1
+    fi
+
+    # Extract JSON response
+    local ai_response=$(echo "$response" | jq -r '.choices[0].message.content' 2>/dev/null)
+    
+    # Parse the JSON
+    local command=$(echo "$ai_response" | jq -r '.command' 2>/dev/null)
+    local explanation=$(echo "$ai_response" | jq -r '.explanation' 2>/dev/null)
+    local educational=$(echo "$ai_response" | jq -r '.educational' 2>/dev/null)
+    
+    # Display educational info
+    if [[ -n "$educational" ]] && [[ "$educational" != "null" ]]; then
+        echo "📚 Educational Info:"
+        echo "   $explanation"
+        echo ""
+        echo "   💡 Tip: $educational"
+        echo ""
+    fi
+    
+    # Display and execute command
+    if [[ -n "$command" ]] && [[ "$command" != "null" ]]; then
+        echo "Command: $command"
+        echo "────────────────────────────────────────────────────────────"
+        eval "$command"
+    else
+        echo "❌ Could not determine appropriate command."
+        echo "💡 Try rephrasing your query or use 'ask' for detailed help."
+    fi
+}
+
+function _explain_command() {
+    local cmd="$1"
+    
+    case "$cmd" in
+        lspv)
+            echo "📖 lspv - List Physical Volumes"
+            echo "   Lists all physical volumes (disks) in the system"
+            echo ""
+            echo "   Usage:"
+            echo "     lspv           - List all PVs"
+            echo "     lspv hdisk0    - Show details for hdisk0"
+            echo "     lspv -l hdisk0 - List LVs on hdisk0"
+            ;;
+        df)
+            echo "📖 df - Disk Free"
+            echo "   Report file system disk space usage"
+            echo ""
+            echo "   Common Options:"
+            echo "     -g: Show in gigabytes (AIX default)"
+            echo "     -k: Show in kilobytes"
+            echo "     -m: Show in megabytes"
+            ;;
+        lsvg)
+            echo "📖 lsvg - List Volume Groups"
+            echo "   Lists volume groups in the system"
+            echo ""
+            echo "   Usage:"
+            echo "     lsvg           - List all VGs"
+            echo "     lsvg rootvg    - Show VG details"
+            echo "     lsvg -l rootvg - List LVs in VG"
+            ;;
+        svmon)
+            echo "📖 svmon - System Virtual Memory Monitor"
+            echo "   Displays memory usage statistics"
+            echo ""
+            echo "   Common Options:"
+            echo "     -G: Global memory summary"
+            echo "     -P: Per-process memory usage"
+            ;;
+        topas)
+            echo "📖 topas - Top Activity System"
+            echo "   Real-time performance monitoring tool"
+            echo ""
+            echo "   Usage:"
+            echo "     topas      - Start monitor"
+            echo "     topas -i 5 - Update every 5 seconds"
+            echo "     Press 'q' to quit"
+            ;;
+        *)
+            echo "📖 $cmd"
+            echo "   No detailed documentation available."
+            echo "   Try: ask what is $cmd"
+            ;;
+    esac
 }
 
 # =============================================================================
@@ -2518,8 +2748,10 @@ echo "💡 Type 'lspv' to list disks (not 'lsblk' - that's Linux!)"
 echo "💡 Type 'topas' for performance (not 'top' - that's Linux!)"
 echo ""
 if [[ -n "$OPENAI_API_KEY" ]]; then
-    echo "🤖 AI Assistant: ENABLED - Type 'ask <question>' for help"
-    echo "   Example: ask how do I check disk space?"
+    echo "🤖 AI Assistant: ENABLED"
+    echo "   • Type 'aixa' - Enter interactive natural language mode"
+    echo "   • Type 'ask <question>' - One-time command suggestion"
+    echo "   • Type 'aixhelp' - Show help and examples"
 else
     echo "🤖 AI Assistant: Available (set OPENAI_API_KEY to enable)"
     echo "   Type 'aixhelp' for more information"
