@@ -2489,9 +2489,24 @@ function blkid() { _aix_not_available "blkid" "lspv or lsfs"; }
 function findmnt() { _aix_not_available "findmnt" "lsfs or mount"; }
 function lsof() { _aix_not_available "lsof" "fuser or AIX-specific commands"; }
 
-# Store original PATH for reference
+# Store original prompt and PATH
 export AIX_SIMULATION_ACTIVE="true"
 export ORIGINAL_PATH="$PATH"
+export ORIGINAL_PS1="$PS1"
+
+# Set custom AIX prompt
+export PS1='\[\033[1;36m\][AIX-7.3]\[\033[0m\] \[\033[1;32m\]\u@aix-server\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\]\$ '
+
+# Create exit function to restore original prompt
+function exit_aix() {
+    export PS1="$ORIGINAL_PS1"
+    unset AIX_SIMULATION_ACTIVE
+    unset ORIGINAL_PS1
+    echo ""
+    echo "👋 Exited AIX simulation mode"
+    echo "💡 Original prompt restored"
+    echo ""
+}
 
 echo ""
 echo "🔒 AIX SIMULATION MODE ACTIVE"
@@ -2509,5 +2524,8 @@ else
     echo "🤖 AI Assistant: Available (set OPENAI_API_KEY to enable)"
     echo "   Type 'aixhelp' for more information"
 fi
+echo ""
+echo "📌 Interactive Prompt: [AIX-7.3] user@aix-server:/path"
+echo "💡 To exit simulation: Type 'exit_aix' to restore normal prompt"
 echo ""
 

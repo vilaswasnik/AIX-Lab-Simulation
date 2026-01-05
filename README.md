@@ -32,6 +32,13 @@ source ./aix_simulation.sh
 
 **That's it!** The simulation is now active in your current terminal session.
 
+**Your prompt will change to:**
+```
+[AIX-7.3] user@aix-server:/workspaces/AIX-Lab-Simulation$
+```
+
+This visual indicator shows you're in AIX simulation mode!
+
 ### 3. Use AIX Commands Interactively
 Once sourced, you can use AIX commands just like on a real system:
 
@@ -74,14 +81,19 @@ The AI will understand your question and suggest the appropriate AIX command wit
 ### 3. Exit the Simulation
 To exit and return to normal Linux environment:
 
-**Option 1** (Recommended): Close the terminal and open a new one
+**Option 1** (Recommended): Type `exit_aix` to restore your original prompt
+```bash
+exit_aix
+```
 
-**Option 2**: Exit the current terminal session:
+**Option 2**: Close the terminal and open a new one
+
+**Option 3**: Exit the current terminal session:
 ```bash
 exit
 ```
 
-Then open a new terminal. The simulation only affects the current shell session.
+The `exit_aix` command will cleanly exit the simulation and restore your original prompt without closing the terminal.
 
 ## 🤖 AI Assistant Features
 
