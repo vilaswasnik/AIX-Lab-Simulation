@@ -88,4 +88,8 @@ echo
 echo "🎯 Remember: This is a learning simulation - commands produce"
 echo "   realistic AIX output but don't affect your actual system!"
 echo
+echo "🔒 IMPORTANT: Linux commands are disabled in this simulation!"
+echo "   This ensures you learn proper AIX commands, not Linux ones."
+echo "   Example: Use 'topas' not 'top', 'lspv' not 'fdisk'"
+echo
 echo "Happy learning! 🚀"

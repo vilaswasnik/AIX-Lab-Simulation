@@ -3,6 +3,123 @@
 # Full command set with proper flag handling from AIX cheatsheet
 
 # =============================================================================
+# AI ASSISTANT - NATURAL LANGUAGE PROCESSING
+# =============================================================================
+
+function ask() {
+    if [[ -z "$OPENAI_API_KEY" ]]; then
+        echo "❌ OpenAI API key not set!"
+        echo "💡 Export your API key: export OPENAI_API_KEY='your-api-key-here'"
+        echo "💡 Add to ~/.bashrc for persistence: echo 'export OPENAI_API_KEY=\"your-key\"' >> ~/.bashrc"
+        return 1
+    fi
+
+    local query="$*"
+    if [[ -z "$query" ]]; then
+        echo "Usage: ask <your question in natural language>"
+        echo ""
+        echo "Examples:"
+        echo "  ask how do I check disk space?"
+        echo "  ask show me all running processes"
+        echo "  ask what's the AIX version?"
+        echo "  ask how to list physical volumes?"
+        return 1
+    fi
+
+    echo "🤔 Understanding your request..."
+    echo ""
+
+    # Create the prompt for OpenAI
+    local system_prompt="You are an AIX expert assistant helping users learn AIX commands. When given a natural language query:
+1. Interpret what the user wants to do
+2. Provide the appropriate AIX command(s)
+3. Give a brief explanation
+4. Show expected output format if relevant
+
+Available AIX commands in this simulation:
+- Storage: lspv, lsvg, lslv, lsfs, df -g/k/m
+- Performance: topas, nmon, vmstat, iostat, sar
+- System: oslevel, uname, prtconf, bootinfo
+- Network: ifconfig, netstat, entstat, ping
+- Services: lssrc, startsrc, stopsrc
+- Processes: ps -ef, w, who
+- Devices: lscfg, lsdev, lsattr
+- Errors: errpt
+- Memory: svmon, lsps
+- Users: lsuser, mkuser, chuser
+
+Format your response as:
+📋 Understanding: [what user wants]
+✅ AIX Command: [the actual command]
+💡 Explanation: [brief explanation]
+📊 Usage: [example with flags if relevant]"
+
+    # Make API call to OpenAI
+    local response=$(curl -s https://api.openai.com/v1/chat/completions \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $OPENAI_API_KEY" \
+        -d "{
+            \"model\": \"gpt-4\",
+            \"messages\": [
+                {\"role\": \"system\", \"content\": $(echo "$system_prompt" | jq -Rs .)},
+                {\"role\": \"user\", \"content\": $(echo "$query" | jq -Rs .)}
+            ],
+            \"temperature\": 0.7,
+            \"max_tokens\": 500
+        }")
+
+    # Check for errors
+    if echo "$response" | grep -q '"error"'; then
+        echo "❌ API Error:"
+        echo "$response" | jq -r '.error.message' 2>/dev/null || echo "$response"
+        return 1
+    fi
+
+    # Extract and display the response
+    local ai_response=$(echo "$response" | jq -r '.choices[0].message.content' 2>/dev/null)
+    
+    if [[ -z "$ai_response" ]] || [[ "$ai_response" == "null" ]]; then
+        echo "❌ Failed to get response from OpenAI"
+        echo "Raw response: $response"
+        return 1
+    fi
+
+    echo "$ai_response"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "💡 Tip: You can now run the suggested command directly!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+function aixhelp() {
+    echo "🤖 AIX Natural Language Assistant"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Ask questions in plain English and get AIX command suggestions!"
+    echo ""
+    echo "Usage: ask <your question>"
+    echo ""
+    echo "Examples:"
+    echo "  ask how do I check disk space?"
+    echo "  ask show me all running processes"
+    echo "  ask what command lists physical volumes?"
+    echo "  ask how to monitor system performance?"
+    echo "  ask how do I check network interfaces?"
+    echo "  ask what's the difference between lspv and lsvg?"
+    echo ""
+    echo "Setup:"
+    echo "  1. Get your API key from: https://platform.openai.com/api-keys"
+    echo "  2. Export it: export OPENAI_API_KEY='your-api-key'"
+    echo "  3. Or add to ~/.bashrc for persistence"
+    echo ""
+    if [[ -n "$OPENAI_API_KEY" ]]; then
+        echo "✅ API Key is configured"
+    else
+        echo "⚠️  API Key not set (run: export OPENAI_API_KEY='your-key')"
+    fi
+}
+
+# =============================================================================
 # SYSTEM INFORMATION COMMANDS
 # =============================================================================
 
@@ -2270,4 +2387,127 @@ echo ""
 echo "🎯 REMEMBER: Use 'source aix_simulation_comprehensive.sh'"
 echo "📚 This simulates real AIX - NOT actual system!"
 echo "=========================================================="
+
+# =============================================================================
+# DISABLE LINUX-SPECIFIC COMMANDS FOR AUTHENTIC AIX SIMULATION
+# =============================================================================
+
+# Function to show AIX alternative for Linux commands
+function _aix_not_available() {
+    local linux_cmd="$1"
+    local aix_alternative="$2"
+    echo "⚠️  AIX: Command '$linux_cmd' not found."
+    if [ -n "$aix_alternative" ]; then
+        echo "💡 Try the AIX equivalent: $aix_alternative"
+    fi
+    return 127
+}
+
+# Disable common Linux package managers
+function yum() { _aix_not_available "yum" "installp -a <package>"; }
+function apt() { _aix_not_available "apt" "installp -a <package>"; }
+function apt-get() { _aix_not_available "apt-get" "installp -a <package>"; }
+function dnf() { _aix_not_available "dnf" "installp -a <package>"; }
+function zypper() { _aix_not_available "zypper" "installp -a <package>"; }
+function rpm() { _aix_not_available "rpm" "lslpp -L (list packages)"; }
+
+# Disable systemd/systemctl (AIX uses SRC - System Resource Controller)
+function systemctl() { _aix_not_available "systemctl" "lssrc -a (list services) or startsrc/stopsrc"; }
+function journalctl() { _aix_not_available "journalctl" "errpt (error log) or alog -o -t boot"; }
+function systemd-analyze() { _aix_not_available "systemd-analyze" "lssrc -a"; }
+
+# Disable Linux-specific hardware commands
+function lscpu() { _aix_not_available "lscpu" "prtconf or lsdev -Cc processor"; }
+function lsblk() { _aix_not_available "lsblk" "lsdev -Cc disk or lspv"; }
+function lspci() { _aix_not_available "lspci" "lsdev -Cc adapter"; }
+function lsusb() { _aix_not_available "lsusb" "lsdev -Cc usb"; }
+function lshw() { _aix_not_available "lshw" "lsdev or prtconf"; }
+function dmidecode() { _aix_not_available "dmidecode" "lsattr -El sys0"; }
+function hwinfo() { _aix_not_available "hwinfo" "lscfg"; }
+
+# Disable Linux-specific tools
+function free() { _aix_not_available "free" "svmon -G (memory) or lsps -a (swap)"; }
+function htop() { _aix_not_available "htop" "topas or nmon"; }
+function top() { _aix_not_available "top" "topas"; }
+function dmesg() { _aix_not_available "dmesg" "errpt"; }
+
+# Disable Linux disk/LVM commands (AIX has different LVM)
+function fdisk() { _aix_not_available "fdisk" "lspv"; }
+function parted() { _aix_not_available "parted" "lspv"; }
+function gdisk() { _aix_not_available "gdisk" "lspv"; }
+function lvs() { _aix_not_available "lvs" "lslv"; }
+function vgs() { _aix_not_available "vgs" "lsvg"; }
+function pvs() { _aix_not_available "pvs" "lspv"; }
+function lvcreate() { _aix_not_available "lvcreate" "mklv"; }
+function vgcreate() { _aix_not_available "vgcreate" "mkvg"; }
+function pvcreate() { _aix_not_available "pvcreate" "chdev or cfgmgr"; }
+function lvextend() { _aix_not_available "lvextend" "extendlv or chfs"; }
+function vgextend() { _aix_not_available "vgextend" "extendvg"; }
+function lvremove() { _aix_not_available "lvremove" "rmlv"; }
+function vgremove() { _aix_not_available "vgremove" "rmvg"; }
+function lvdisplay() { _aix_not_available "lvdisplay" "lslv"; }
+function vgdisplay() { _aix_not_available "vgdisplay" "lsvg"; }
+function pvdisplay() { _aix_not_available "pvdisplay" "lspv"; }
+
+# Disable Linux filesystem commands
+function mkfs.ext4() { _aix_not_available "mkfs.ext4" "mkfs -V jfs2"; }
+function mkfs.ext3() { _aix_not_available "mkfs.ext3" "mkfs -V jfs2"; }
+function mkfs.xfs() { _aix_not_available "mkfs.xfs" "mkfs -V jfs2"; }
+function resize2fs() { _aix_not_available "resize2fs" "chfs -a size=+XG /path"; }
+function tune2fs() { _aix_not_available "tune2fs" "lsfs -q /path"; }
+function dumpe2fs() { _aix_not_available "dumpe2fs" "lsfs -l /path"; }
+function e2fsck() { _aix_not_available "e2fsck" "fsck /dev/hdX"; }
+function xfs_repair() { _aix_not_available "xfs_repair" "fsck /dev/hdX"; }
+
+# Disable Linux network tools
+function ip() { _aix_not_available "ip" "ifconfig -a or netstat -rn"; }
+function ethtool() { _aix_not_available "ethtool" "entstat -d en0"; }
+function ss() { _aix_not_available "ss" "netstat -an"; }
+function nmcli() { _aix_not_available "nmcli" "ifconfig or netstat"; }
+function nmtui() { _aix_not_available "nmtui" "smit tcpip"; }
+
+# Disable Linux user management commands
+function useradd() { _aix_not_available "useradd" "mkuser"; }
+function userdel() { _aix_not_available "userdel" "rmuser"; }
+function usermod() { _aix_not_available "usermod" "chuser"; }
+function groupadd() { _aix_not_available "groupadd" "mkgroup"; }
+function groupdel() { _aix_not_available "groupdel" "rmgroup"; }
+function groupmod() { _aix_not_available "groupmod" "chgroup"; }
+
+# Disable other Linux-specific commands
+function service() { _aix_not_available "service" "lssrc, startsrc, stopsrc"; }
+function chkconfig() { _aix_not_available "chkconfig" "lssrc -a"; }
+function update-rc.d() { _aix_not_available "update-rc.d" "chrctcp or mkitab"; }
+function firewall-cmd() { _aix_not_available "firewall-cmd" "AIX uses different firewall methods"; }
+function ufw() { _aix_not_available "ufw" "AIX uses different firewall methods"; }
+function iptables() { _aix_not_available "iptables" "AIX uses different firewall methods"; }
+function selinux() { _aix_not_available "selinux" "AIX uses Trusted AIX for enhanced security"; }
+function getenforce() { _aix_not_available "getenforce" "AIX uses different security model"; }
+
+# Disable Linux-specific filesystem tools
+function blkid() { _aix_not_available "blkid" "lspv or lsfs"; }
+function findmnt() { _aix_not_available "findmnt" "lsfs or mount"; }
+function lsof() { _aix_not_available "lsof" "fuser or AIX-specific commands"; }
+
+# Store original PATH for reference
+export AIX_SIMULATION_ACTIVE="true"
+export ORIGINAL_PATH="$PATH"
+
+echo ""
+echo "🔒 AIX SIMULATION MODE ACTIVE"
+echo "   Linux-specific commands are now disabled for authentic AIX training"
+echo "   Use AIX equivalents only (e.g., 'lspv' instead of 'fdisk', 'topas' instead of 'top')"
+echo ""
+echo "💡 Type 'df -g' to check disk space (not 'df -h' - that's Linux!)"
+echo "💡 Type 'lspv' to list disks (not 'lsblk' - that's Linux!)"
+echo "💡 Type 'topas' for performance (not 'top' - that's Linux!)"
+echo ""
+if [[ -n "$OPENAI_API_KEY" ]]; then
+    echo "🤖 AI Assistant: ENABLED - Type 'ask <question>' for help"
+    echo "   Example: ask how do I check disk space?"
+else
+    echo "🤖 AI Assistant: Available (set OPENAI_API_KEY to enable)"
+    echo "   Type 'aixhelp' for more information"
+fi
+echo ""
 

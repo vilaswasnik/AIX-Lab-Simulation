@@ -8,10 +8,23 @@ A comprehensive IBM AIX command simulation environment for learning and training
 📚 **Comprehensive Command Set**: Full simulation of AIX storage, performance, network, and system commands
 💡 **Learning-Focused**: Helpful suggestions when you try Linux commands by mistake
 🎯 **Realistic Output**: Commands produce actual AIX-style output
+🤖 **AI-Powered Assistant**: Ask questions in natural language and get instant AIX command suggestions (OpenAI integration)
 
 ## 🚀 Quick Start
 
-### 1. Start the Simulation
+### 1. Setup (Optional: Enable AI Assistant)
+For natural language command suggestions, set up your OpenAI API key:
+
+```bash
+# Get your API key from: https://platform.openai.com/api-keys
+export OPENAI_API_KEY='your-api-key-here'
+
+# Make it permanent by adding to ~/.bashrc
+echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 2. Start the Simulation
 ```bash
 # Source the simulation to enable AIX commands
 source ./aix_simulation.sh
@@ -19,7 +32,7 @@ source ./aix_simulation.sh
 
 **That's it!** The simulation is now active in your current terminal session.
 
-### 2. Use AIX Commands Interactively
+### 3. Use AIX Commands Interactively
 Once sourced, you can use AIX commands just like on a real system:
 
 ```bash
@@ -39,6 +52,23 @@ df -g
 topas
 ```
 
+### 4. Ask Questions in Natural Language (AI Assistant)
+If you have configured the OpenAI API key, you can ask questions in plain English:
+
+```bash
+# Ask for help with commands
+ask how do I check disk space?
+ask show me all running processes
+ask what command lists physical volumes?
+ask how to monitor system performance?
+ask what's the difference between lspv and lsvg?
+
+# Get help about the AI assistant
+aixhelp
+```
+
+The AI will understand your question and suggest the appropriate AIX command with explanations!
+
 **Note**: Once sourced, Linux commands like `top`, `fdisk`, `systemctl` will be disabled and suggest AIX alternatives.
 
 ### 3. Exit the Simulation
@@ -52,6 +82,40 @@ exit
 ```
 
 Then open a new terminal. The simulation only affects the current shell session.
+
+## 🤖 AI Assistant Features
+
+The integrated OpenAI-powered assistant helps you learn AIX commands naturally:
+
+### How It Works
+- **Natural Language Understanding**: Ask questions in plain English
+- **Smart Suggestions**: Get the right AIX command for your task
+- **Contextual Help**: Receive explanations and usage examples
+- **Learning Tool**: Understand why a command is used, not just what it is
+
+### Examples
+```bash
+ask how do I check available disk space?
+# Returns: df -g with explanation
+
+ask show me memory usage
+# Returns: svmon -G with usage details
+
+ask list all network interfaces
+# Returns: ifconfig -a with examples
+
+ask how to monitor CPU performance?
+# Returns: topas or nmon with comparison
+```
+
+### Setup Requirements
+- OpenAI API key (get from https://platform.openai.com/api-keys)
+- `curl` and `jq` installed (usually pre-installed on most systems)
+- Internet connection for API calls
+
+### Commands
+- `ask <question>` - Ask any AIX-related question in natural language
+- `aixhelp` - Show AI assistant help and status
 
 ## 🔒 Linux Command Blocking
 
